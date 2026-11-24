@@ -16,7 +16,7 @@
 │       ├── auth/            sessions, JWT, RBAC
 │       └── mcp/             MCP server for the ai_agent principal
 ├── frontend/                Vite + React + TypeScript (strict) SPA
-├── deploy/                  docker-compose, Caddyfile
+├── deploy/                  docker-compose, Nginx configuration
 ├── docs/                    design documents
 ├── go.work                  Go workspace (lets tools resolve the backend module from the repo root)
 └── Makefile                 lint / test / build / dev / up / down
@@ -35,7 +35,8 @@ constraint logic stays pure and fully unit-testable (arch §19).
 |---|---|
 | `make dev` | API on `:8080` + Vite dev server; `/api` is proxied to the API |
 | `make lint test build` | same checks as CI |
-| `make up` / `make down` | full stack in docker compose (`deploy/docker-compose.yml`) |
+| `make up` / `make down` | full stack with only the web port published (`deploy/docker-compose.yml`) |
+| `make up-dev` | local stack with PostgreSQL additionally bound to loopback for host tools |
 
 Health check: `curl localhost:8080/api/healthz` → `{"status":"ok"}`.
 
@@ -55,7 +56,7 @@ login and per client IP with exponential backoff (429 + `Retry-After`).
 | `APP_ENV` | `dev` allows a built-in insecure `JWT_SECRET` and defaults cookies to non-`Secure` (`make dev` sets it) |
 | `JWT_SECRET` | HS256 key, ≥ 32 bytes; the server refuses to start without it unless `APP_ENV=dev` |
 | `COOKIE_SECURE` | `Secure` cookie attribute; default `true`, `false` in dev |
-| `TRUST_PROXY` | take the client IP from the last `X-Forwarded-For` hop (behind Caddy) |
+| `TRUST_PROXY` | take the client IP from the last `X-Forwarded-For` hop (behind Nginx) |
 | `ADMIN_LOGIN`, `ADMIN_PASSWORD` | create the first admin on startup if no active admin exists (idempotent; a warning is logged when unset) |
 
 An access token stays valid until it expires even after logout or disabling the account; refresh
@@ -97,10 +98,13 @@ route guards), `components/` (UI kit on Tailwind v4 with light/dark tokens in `i
 
 | Service | Image / build | Port (host) |
 |---|---|---|
-| `postgres` | `postgres:17-alpine`, volume `pgdata`, `pg_isready` healthcheck | `127.0.0.1:${POSTGRES_PORT:-5432}` |
-| `api` | `backend/Dockerfile` (context `backend/`, distroless static); gets `DATABASE_URL`, starts after `postgres` is healthy | internal `:8080` |
-| `web` | `frontend/Dockerfile` (context repo root: Vite build → Caddy with `deploy/Caddyfile`); serves the SPA, proxies `/api/*` (incl. WebSocket) to `api` | `${WEB_PORT:-80}` |
+| `postgres` | `postgres:17-alpine`, volume `pgdata`, `pg_isready` healthcheck | private backend network |
+| `api` | `backend/Dockerfile` (context `backend/`, multi-stage static image); gets `DATABASE_URL`, starts after `postgres` is healthy | private networks, internal `:8080` |
+| `web` | `frontend/Dockerfile` (context repo root: Vite build → Nginx Alpine); serves the SPA and proxies `/api/*` (incl. WebSocket) to `api` | `${WEB_PORT:-80}` |
 
-Configuration: `cp deploy/.env.example deploy/.env` (optional — every variable has a default).
-Check: `curl localhost/api/healthz` (through Caddy). If ports 80/5432 are taken, set `WEB_PORT` /
-`POSTGRES_PORT`. `docker compose -f deploy/docker-compose.yml down -v` also drops the database volume.
+The API and PostgreSQL are not published to the host. The web service is attached to the frontend
+network; only the API joins both networks, while PostgreSQL is reachable only from the backend
+network. Configuration is optional because every variable has a default. Run `make up` for the
+private stack, or `make up-dev` to additionally bind PostgreSQL to `127.0.0.1` for host development
+tools. Check with `curl localhost/api/healthz` through Nginx.
+`docker compose -f deploy/docker-compose.yml down -v` also drops the database volume.

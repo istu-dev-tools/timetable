@@ -2,7 +2,7 @@
 # The api image uses backend/ as its context (backend/.dockerignore).
 *
 !frontend/
-!deploy/Caddyfile
+!deploy/nginx.conf
 frontend/node_modules/
 frontend/dist/
 frontend/dist-ssr/
