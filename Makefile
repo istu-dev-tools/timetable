@@ -1,4 +1,4 @@
-.PHONY: lint test build dev up down \
+.PHONY: lint test build dev up up-dev down \
 	backend-lint backend-test backend-build \
 	frontend-lint frontend-test frontend-build sqlc seed
 
@@ -44,6 +44,9 @@ seed:
 
 up:
 	docker compose -f deploy/docker-compose.yml up -d --build
+
+up-dev:
+	docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.dev.yml up -d --build
 
 down:
 	docker compose -f deploy/docker-compose.yml down

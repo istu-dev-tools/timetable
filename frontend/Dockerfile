@@ -1,4 +1,4 @@
-# Build context: repository root (needs frontend/ and deploy/Caddyfile), see /.dockerignore.
+# Build context: repository root (needs frontend/ and deploy/nginx.conf), see /.dockerignore.
 #   docker build -f frontend/Dockerfile .
 FROM node:24-alpine AS build
 WORKDIR /app
@@ -9,7 +9,7 @@ RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
 RUN npm run build
 
-FROM caddy:2-alpine
-COPY deploy/Caddyfile /etc/caddy/Caddyfile
-COPY --from=build /app/dist /srv
+FROM nginx:alpine
+COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80

@@ -8,7 +8,7 @@ run produces the same rows and the same IDs.
 ## Running
 
 ```sh
-make up seed                # start the compose stack, then load the dataset
+make up-dev seed            # start the compose stack with local DB access, then load the dataset
 make seed                   # load into DATABASE_URL (default: the compose database)
 make seed DATABASE_URL='postgres://user:pass@host:5432/db?sslmode=disable'
 ```
