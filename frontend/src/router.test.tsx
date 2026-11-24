@@ -27,6 +27,13 @@ function backend(initial: User | null) {
 describe('routing and session', () => {
   afterEach(() => vi.unstubAllGlobals())
 
+  it('keeps schedule review available without a session', async () => {
+    backend(null)
+    const { router } = renderRoutes(routes, '/review')
+    expect(await screen.findByRole('heading', { name: 'Проверка расписания' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/review')
+  })
+
   it('redirects to /login without a session (after one refresh attempt)', async () => {
     const fetch = backend(null)
     const { router } = renderRoutes(routes, '/buildings')

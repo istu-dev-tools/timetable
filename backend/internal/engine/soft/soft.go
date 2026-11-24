@@ -187,6 +187,12 @@ func (ss *ScopeSet) add(s Scope) {
 // Len returns the number of scopes.
 func (ss *ScopeSet) Len() int { return len(ss.list) }
 
+// Reset empties the set and keeps its memory, for evaluating many moves in a loop.
+func (ss *ScopeSet) Reset() {
+	ss.list = ss.list[:0]
+	clear(ss.seen)
+}
+
 // AddLesson adds the scopes lesson l affects when it has assignment a. Call it with both the
 // old and the new assignment of every lesson a move changes.
 func (e *Evaluator) AddLesson(ss *ScopeSet, l int32, a engine.Assignment) {
@@ -241,6 +247,31 @@ func (e *Evaluator) Full(s *engine.Schedule) Breakdown {
 	}
 	for r := range e.p.Rooms {
 		e.measure(s, Scope{Kind: Room, ID: int64(r)}, &b)
+	}
+	return b
+}
+
+// ForGroup returns the penalties of group g's days in both weeks: gaps, building transitions
+// and isolated lessons.
+func (e *Evaluator) ForGroup(s *engine.Schedule, g int32) Breakdown {
+	var b Breakdown
+	for w := uint8(0); w < 2; w++ {
+		for d := range e.p.Grid.Days {
+			e.measure(s, Scope{Kind: GroupDay, ID: int64(g), Day: domain.Day(d), Week: w}, &b)
+		}
+	}
+	return b
+}
+
+// ForTeacher returns the penalties of teacher t's days and weeks: gaps, building transitions
+// and teaching days.
+func (e *Evaluator) ForTeacher(s *engine.Schedule, t int32) Breakdown {
+	var b Breakdown
+	for w := uint8(0); w < 2; w++ {
+		for d := range e.p.Grid.Days {
+			e.measure(s, Scope{Kind: TeacherDay, ID: int64(t), Day: domain.Day(d), Week: w}, &b)
+		}
+		e.measure(s, Scope{Kind: TeacherWeek, ID: int64(t), Week: w}, &b)
 	}
 	return b
 }

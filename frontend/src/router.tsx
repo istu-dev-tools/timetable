@@ -5,6 +5,7 @@ import { t } from './i18n/index.ts'
 import { AppLayout } from './layout/AppLayout.tsx'
 import { HomePage } from './pages/HomePage.tsx'
 import { LoginPage } from './pages/lazy.ts'
+import { ReviewPage } from './pages/ReviewPage.tsx'
 
 const comingSoon = <PageMessage title={t('common.comingSoon')} />
 
@@ -21,6 +22,7 @@ const managementPaths = [
 
 export const routes: RouteObject[] = [
   { path: '/login', element: <LoginPage /> },
+  { path: '/review', element: <ReviewPage /> },
   {
     element: <RequireAuth />,
     children: [

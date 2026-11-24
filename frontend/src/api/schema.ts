@@ -21,6 +21,29 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/review': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Check an uploaded timetable
+     * @description Parses a timetable file and runs the hard and soft checks on it as it is (every lesson
+     *     pinned). Accepts a Тандем weekly timetable (.xls/.xlsx) or a ttx/1 file (JSON Lines,
+     *     docs/istu-data-format.md §4). Nothing is stored and no account is needed; at most two
+     *     reviews run at once (429 `busy` otherwise), files are limited to 20 MB (413 `too_large`).
+     */
+    post: operations['reviewTimetable']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/openapi.yaml': {
     parameters: {
       query?: never
@@ -575,6 +598,131 @@ export interface components {
         message: string
       }
     }
+    ReviewReport: {
+      source: {
+        id?: string
+        /** @example tandem-xls-t1 */
+        adapter?: string
+        file?: string
+        sha256?: string
+        title?: string
+      }
+      periods: {
+        n: number
+        /** @example 08:30 */
+        start: string
+        /** @example 10:00 */
+        end: string
+      }[]
+      stats: {
+        lessons: number
+        groups: number
+        teachers: number
+        rooms: number
+        disciplines: number
+        hard: number
+      }
+      lessons: components['schemas']['ReviewLesson'][]
+      rooms: {
+        key: string
+        building: string
+        /**
+         * @example computer
+         * @example lab
+         * @example special
+         * @example general
+         * @example sport
+         * @example unknown
+         */
+        type: string
+        title: string
+        capacity: number | null
+      }[]
+      violations: {
+        /** @example H1 */
+        rule: string
+        title: string
+        message: string
+        lesson_ids: number[]
+        resource?: {
+          /** @enum {string} */
+          kind: 'teacher' | 'group' | 'room'
+          name: string
+        }
+        /** @enum {string} */
+        day?: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
+        period?: number
+      }[]
+      soft: {
+        key: string
+        title: string
+        value: number
+        weight: number
+        weighted: number
+        /** @description false when the data the criterion needs is missing */
+        available: boolean
+      }[]
+      soft_total: number
+      groups: components['schemas']['ReviewScore'][]
+      teachers: components['schemas']['ReviewScore'][]
+      issues: {
+        /** @constant */
+        kind: 'issue'
+        code: string
+        ref?: components['schemas']['SourceRef']
+        message: string
+      }[]
+      notes: string[]
+    }
+    /** @description An observed lesson in ttx/1 form. */
+    ReviewLesson: {
+      id: number
+      refs: components['schemas']['SourceRef'][]
+      audience: {
+        group: string
+        subgroup: number | null
+      }[]
+      /** @enum {string} */
+      day: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
+      period: number
+      /** @enum {string} */
+      parity: 'every' | 'odd' | 'even'
+      /**
+       * @example lecture
+       * @example practice
+       * @example lab
+       * @example curator
+       * @example internship
+       */
+      lesson_type: string
+      discipline: string
+      teachers: string[]
+      room?: string
+      /**
+       * @example online
+       * @example none
+       */
+      place?: string
+      raw?: {
+        [key: string]: string
+      }
+      note?: string
+      flags?: string[]
+    }
+    ReviewScore: {
+      name: string
+      /** @description lessons per two-week cycle */
+      lessons: number
+      gaps: number
+      transitions: number
+      max_per_day: number
+      conflicts: number
+    }
+    SourceRef: {
+      sheet: string
+      row: number
+      col: string
+    }
     /** @enum {string} */
     Role: 'student' | 'teacher' | 'admin' | 'ai_agent'
     User: {
@@ -962,6 +1110,61 @@ export interface operations {
             /** @constant */
             status: 'ok'
           }
+        }
+      }
+    }
+  }
+  reviewTimetable: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'multipart/form-data': {
+          /** Format: binary */
+          file: string
+        }
+      }
+    }
+    responses: {
+      /** @description The review report. */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ReviewReport']
+        }
+      }
+      400: components['responses']['BadRequest']
+      /** @description The file is too large (`too_large`). */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['Error']
+        }
+      }
+      /** @description Unsupported or malformed file (`unsupported_file`, `validation_failed`). */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['Error']
+        }
+      }
+      /** @description Another review is running (`busy`). */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['Error']
         }
       }
     }

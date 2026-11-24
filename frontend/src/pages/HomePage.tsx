@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router'
 import { fetchHealth } from '../api/health.ts'
 import { useAuth } from '../auth/context.ts'
 import { t } from '../i18n/index.ts'
@@ -21,6 +22,10 @@ export function HomePage() {
       {user && <p>{t('home.welcome', { name: user.display_name || user.login })}</p>}
       <p className="text-sm text-muted">
         {t('home.apiStatus')}: <span data-testid="api-status">{status}</span>
+      </p>
+      <p>
+        <Link to="/review">Проверить расписание</Link> — загрузить файл из «Тандема» и посмотреть
+        накладки, окна и переходы между корпусами.
       </p>
     </section>
   )
